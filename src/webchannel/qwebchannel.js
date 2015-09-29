@@ -66,6 +66,14 @@ var QWebChannel = function(transport, initCallback)
         channel.transport.send(data);
     }
 
+    this.sendSync = function(data)
+    {
+        if (typeof(data) !== "string") {
+            data = JSON.stringify(data);
+        }
+        return channel.transport.sendSync(data);
+    }
+
     this.transport.onmessage = function(message)
     {
         var data = message.data;
@@ -108,6 +116,11 @@ var QWebChannel = function(transport, initCallback)
         data.id = channel.execId++;
         channel.execCallbacks[data.id] = callback;
         channel.send(data);
+    };
+
+    this.execSync = function(data)
+    {
+        return channel.sendSync(data);
     };
 
     this.objects = {};
@@ -343,6 +356,18 @@ function QObject(name, data, webChannel)
                     }
                 }
             });
+        };
+
+        // Declare also the fonction with "_Sync" suffix, dedicated to synchronous calls
+        var syncMethodName = methodName + "_Sync";
+        object[syncMethodName] = function() {
+            var response = webChannel.execSync({
+                "type": QWebChannelMessageTypes.invokeMethod,
+                "object": object.__id__,
+                "method": methodIdx,
+                "args": arguments
+            });
+            return object.unwrapQObject(response);
         };
     }
 
